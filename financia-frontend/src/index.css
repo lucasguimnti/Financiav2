@@ -1,0 +1,28 @@
+/* Força o tema noturno e limpa a formatação padrão do navegador */
+:root {
+  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: dark;
+  
+  /* Cores base do nosso painel (Slate 900 e Texto claro) */
+  background-color: #0f172a !important; 
+  color: #f8fafc !important;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+/* Impede que o Vite force textos escuros nos títulos */
+h1, h2, h3, p, span, div, td, th {
+  color: inherit;
+}
+
+/* Estrutura base do React/Vite */
+#root {
+  margin: 0 auto;
+  width: 100%;
+}
