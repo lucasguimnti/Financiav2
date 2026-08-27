@@ -2,7 +2,7 @@ import axios from 'axios';
 
 export const api = axios.create({
   // Coloque aqui a URL correta do seu backend
-  baseURL: 'http://localhost:3000', 
+  baseURL: 'process.env.NEXT_PUBLIC_API_URL', 
 });
 
 // O INTERCEPTOR: Antes de qualquer requisição sair, ele executa essa função
