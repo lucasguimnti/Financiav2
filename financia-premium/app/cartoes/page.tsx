@@ -15,10 +15,20 @@ import { BarChart, Bar, ResponsiveContainer, Cell, Tooltip as RechartsTooltip } 
 // INTERFACES
 // ==========================================
 interface Transaction {
-  id: number; description: string; amount: string | number; type: 'income' | 'expense';
-  date: string; is_paid: boolean; credit_card_id?: number | string | null; category_id?: number | string | null;
-  third_party_id?: number | string | null; third_party_name?: string; third_party_color?: string;
-  installment_number?: number; installments?: number;
+  id: number; 
+  description: string; 
+  amount: string | number; 
+  type: 'income' | 'expense';
+  date: string; 
+  is_paid: boolean; 
+  credit_card_id?: number | string | null; 
+  category_id?: number | string | null;
+  third_party_id?: number | string | null; 
+  third_party_name?: string; 
+  third_party_color?: string;
+  installment_number?: number; 
+  installments?: number;
+  payment_type?: string;   // <-- ADICIONE ESTA LINHA
 }
 interface CreditCard { id: number; name: string; limit_amount: string | number; closing_day: number; due_day: number; color: string; }
 interface Account { id: number; name: string; balance: string | number; }

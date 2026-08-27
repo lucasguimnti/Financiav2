@@ -96,6 +96,12 @@ export default function PlanejamentoPatrimonial() {
     } catch (error) { alert('Erro ao criar objetivo.'); }
   };
 
+  const handleOpenAporte = (goal: Goal) => {
+  setSelectedGoal(goal);
+  setAporteValue('');
+  setIsAporteOpen(true);
+};
+
   const handleDeleteGoal = async (id: number) => {
     if(!confirm("Tem certeza que deseja excluir este objetivo? O saldo será ignorado.")) return;
     try {

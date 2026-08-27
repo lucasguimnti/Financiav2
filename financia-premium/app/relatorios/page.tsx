@@ -185,7 +185,15 @@ export default function Relatorios() {
                           <Cell key={`cell-${index}`} fill={entry.color || '#64748b'} className="transition-all duration-300 hover:opacity-80"/>
                         ))}
                       </Pie>
-                      <RechartsTooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', color: '#fff' }} itemStyle={{ color: '#fff', fontWeight: 'bold' }} />
+                      <RechartsTooltip formatter={
+                        (value) => formatCurrency(Number(value) || 0)
+                      }   contentStyle={
+                        { backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px', color: '#fff' }
+                      } 
+                          itemStyle={
+                            { color: '#fff', fontWeight: 'bold' }
+                      }              
+/>
                     </PieChart>
                   </ResponsiveContainer>
                 </div>

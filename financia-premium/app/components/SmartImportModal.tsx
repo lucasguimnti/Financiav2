@@ -88,23 +88,33 @@ export default function SmartImportModal({
       ws.getCell(`K${i}`).dataValidation = { type: 'list', allowBlank: true, formulae: [`ListasOcultas!$D$2:$D$${tpNames.length + 1}`] }; 
     }
 
-    // FORMATAÇÃO CONDICIONAL 1: Se for Cartão, não precisa de Data de Vencimento (fica cinza)
-    ws.addConditionalFormatting({
-      ref: 'B2:B1001',
-      rules: [{
-        type: 'expression', formulae: ['$G2="Cartão de Crédito"'],
-        style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFEEEEEE' }, fgColor: { argb: 'FFEEEEEE' } }, font: { color: { argb: 'FF94A3B8' } } }
-      }]
-    });
+// FORMATAÇÃO CONDICIONAL 1: Se for Cartão, não precisa de Data de Vencimento (fica cinza)
+ws.addConditionalFormatting({
+  ref: 'B2:B1001',
+  rules: [{
+    type: 'expression',
+    formulae: ['$G2="Cartão de Crédito"'],
+    priority: 1,
+    style: { 
+      fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFEEEEEE' }, fgColor: { argb: 'FFEEEEEE' } }, 
+      font: { color: { argb: 'FF94A3B8' } } 
+    }
+  }]
+})
 
-    // FORMATAÇÃO CONDICIONAL 2: Se for Conta/Dinheiro, não precisa de Parcelas (fica cinza)
-    ws.addConditionalFormatting({
-      ref: 'I2:I1001',
-      rules: [{
-        type: 'expression', formulae: ['$G2="Conta / Dinheiro"'],
-        style: { fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFEEEEEE' }, fgColor: { argb: 'FFEEEEEE' } }, font: { color: { argb: 'FF94A3B8' } } }
-      }]
-    });
+// FORMATAÇÃO CONDICIONAL 2: Se for Conta/Dinheiro, não precisa de Parcelas (fica cinza)
+ws.addConditionalFormatting({
+  ref: 'I2:I1001',
+  rules: [{
+    type: 'expression',
+    formulae: ['$G2="Conta / Dinheiro"'],
+    priority: 1,
+    style: { 
+      fill: { type: 'pattern', pattern: 'solid', bgColor: { argb: 'FFEEEEEE' }, fgColor: { argb: 'FFEEEEEE' } }, 
+      font: { color: { argb: 'FF94A3B8' } } 
+    }
+  }]
+});
 
     ws.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
     ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF8B5CF6' } };
