@@ -1,18 +1,15 @@
 import axios from 'axios';
 
 export const api = axios.create({
-  // URL corrigida sem aspas, para ser lida como variável
-  baseURL: process.env.NEXT_PUBLIC_API_URL, 
+  // Tenta puxar a variável, mas se o Cloudflare falhar, usa o link direto como garantia
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'https://financiav2.onrender.com', 
 });
 
 // O INTERCEPTOR: Antes de qualquer requisição sair, ele executa essa função
 api.interceptors.request.use((config) => {
-  // Verifica se estamos rodando no navegador (client-side)
   if (typeof window !== 'undefined') {
-    // Busca o token que foi salvo no login
     const token = localStorage.getItem('token');
     
-    // Se o token existir, injeta no cabeçalho (Header) da requisição
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
