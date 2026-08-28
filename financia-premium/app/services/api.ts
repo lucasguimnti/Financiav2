@@ -1,8 +1,8 @@
 import axios from 'axios';
 
 export const api = axios.create({
-  // Coloque aqui a URL correta do seu backend
-  baseURL: 'process.env.NEXT_PUBLIC_API_URL', 
+  // URL corrigida sem aspas, para ser lida como variável
+  baseURL: process.env.NEXT_PUBLIC_API_URL, 
 });
 
 // O INTERCEPTOR: Antes de qualquer requisição sair, ele executa essa função
