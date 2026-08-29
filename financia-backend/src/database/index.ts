@@ -1,12 +1,14 @@
 import { Pool } from 'pg';
+import dotenv from 'dotenv';
 
-// Configuração da conexão com o PostgreSQL que está rodando na sua máquina
+dotenv.config();
+
+// Configuração inteligente: usa a nuvem em produção ou o localhost em desenvolvimento
 export const pool = new Pool({
-  user: 'postgres',
-  host: 'localhost',
-  database: 'financia',
-  password: 'admin',
-  port: 5432,
+  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:admin@localhost:5432/financia',
+  
+  // O SSL é necessário para conexões com bancos em nuvem (como Supabase/Render)
+  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
 });
 
 // Função simples para testar se o Node consegue "falar" com o banco
