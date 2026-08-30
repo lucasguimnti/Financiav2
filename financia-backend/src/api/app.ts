@@ -174,6 +174,31 @@ app.delete('/api/categories/:id', authMiddleware, async (req: AuthRequest, res) 
   }
 });
 
+app.put('/api/categories/:id', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const { name, type, color, icon } = req.body;
+    const result = await pool.query(
+      `UPDATE categories 
+       SET name = COALESCE($1, name), 
+           type = COALESCE($2, type), 
+           color = COALESCE($3, color),
+           icon = COALESCE($4, icon)
+       WHERE id = $5 AND user_id = $6 
+       RETURNING *`,
+      [name, type, color, icon, req.params.id, req.userId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Categoria não encontrada' });
+    }
+    
+    res.status(200).json(result.rows[0]);
+  } catch (error) { 
+    console.error(error); 
+    res.status(500).json({ error: 'Erro interno' }); 
+  }
+});
+
 // ==========================================
 // TRANSAÇÕES E REEMBOLSOS
 // ==========================================
