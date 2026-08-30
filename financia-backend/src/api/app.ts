@@ -155,6 +155,25 @@ app.get('/api/categories', authMiddleware, async (req: AuthRequest, res) => {
   } catch (error) { console.error(error); res.status(500).json({ error: 'Erro interno' }); }
 });
 
+app.delete('/api/categories/:id', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const result = await pool.query('DELETE FROM categories WHERE id = $1 AND user_id = $2', [req.params.id, req.userId]);
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Categoria não encontrada' });
+    }
+    
+    res.status(204).send(); 
+  } catch (error: any) {
+    console.error(error);
+    // Se o banco de dados avisar que a categoria já está sendo usada em alguma transação (código 23503)
+    if (error.code === '23503') {
+      return res.status(400).json({ error: 'Esta categoria está sendo usada em um lançamento e não pode ser excluída.' });
+    }
+    res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
 // ==========================================
 // TRANSAÇÕES E REEMBOLSOS
 // ==========================================
