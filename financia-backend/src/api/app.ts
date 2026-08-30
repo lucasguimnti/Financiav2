@@ -523,6 +523,53 @@ app.post('/api/credit-cards/:id/invoices/pay', authMiddleware, async (req: AuthR
   } finally { client.release(); }
 });
 
+// Rota para EDITAR um cartão de crédito
+app.put('/api/credit-cards/:id', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const { name, limit_amount, closing_day, due_day, color } = req.body;
+    const result = await pool.query(
+      `UPDATE credit_cards 
+       SET name = COALESCE($1, name), 
+           limit_amount = COALESCE($2, limit_amount), 
+           closing_day = COALESCE($3, closing_day),
+           due_day = COALESCE($4, due_day),
+           color = COALESCE($5, color)
+       WHERE id = $6 AND user_id = $7 
+       RETURNING *`,
+      [name, limit_amount, closing_day, due_day, color, req.params.id, req.userId]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Cartão não encontrado' });
+    }
+    
+    res.status(200).json(result.rows[0]);
+  } catch (error) { 
+    console.error(error); 
+    res.status(500).json({ error: 'Erro interno ao editar cartão' }); 
+  }
+});
+
+// Rota para EXCLUIR um cartão de crédito
+app.delete('/api/credit-cards/:id', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const result = await pool.query('DELETE FROM credit_cards WHERE id = $1 AND user_id = $2', [req.params.id, req.userId]);
+    
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: 'Cartão não encontrado' });
+    }
+    
+    res.status(204).send(); 
+  } catch (error: any) { 
+    console.error(error); 
+    // Impede a exclusão se o cartão já tiver compras cadastradas
+    if (error.code === '23503') {
+      return res.status(400).json({ error: 'Este cartão possui faturas ou compras e não pode ser excluído.' });
+    }
+    res.status(500).json({ error: 'Erro interno ao excluir cartão' }); 
+  }
+});
+
 // ==========================================
 // METAS E ORÇAMENTOS 
 // ==========================================
