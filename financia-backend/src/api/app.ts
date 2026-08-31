@@ -611,23 +611,49 @@ app.post('/api/goals', authMiddleware, async (req: AuthRequest, res) => {
 });
 
 app.put('/api/goals/:id/add', authMiddleware, async (req: AuthRequest, res) => {
+  const client = await pool.connect();
   try {
+    await client.query('BEGIN');
     const { amount } = req.body;
-    const result = await pool.query(
-      `UPDATE goals 
-       SET current_amount = current_amount + $1 
-       WHERE id = $2 AND user_id = $3 
-       RETURNING *`,
+    
+    // 1. Atualiza o saldo principal da meta
+    const result = await client.query(
+      `UPDATE goals SET current_amount = current_amount + $1 WHERE id = $2 AND user_id = $3 RETURNING *`,
       [amount, req.params.id, req.userId]
     );
 
     if (result.rows.length === 0) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Meta não encontrada' });
     }
 
+    // 2. Grava a movimentação no histórico
+    await client.query(
+      `INSERT INTO goal_history (goal_id, user_id, amount) VALUES ($1, $2, $3)`,
+      [req.params.id, req.userId, amount]
+    );
+
+    await client.query('COMMIT');
     res.json(result.rows[0]);
   } catch (error) { 
+    await client.query('ROLLBACK');
     console.error('🔥 ERRO AO MOVIMENTAR SALDO DA META:', error); 
+    res.status(500).json({ error: 'Erro interno' }); 
+  } finally {
+    client.release();
+  }
+});
+
+// NOVA ROTA: Busca o histórico de aportes e resgates
+app.get('/api/goals/:id/history', authMiddleware, async (req: AuthRequest, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM goal_history WHERE goal_id = $1 AND user_id = $2 ORDER BY created_at DESC',
+      [req.params.id, req.userId]
+    );
+    res.json(result.rows);
+  } catch (error) { 
+    console.error('🔥 ERRO HISTÓRICO:', error); 
     res.status(500).json({ error: 'Erro interno' }); 
   }
 });
