@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Target, Plus, TrendingUp, AlertTriangle, 
-  Sparkles, Wallet, CheckCircle2, X, ChevronRight, Activity, Flame, ShieldCheck, Trash2, ArrowDownToLine, ArrowUpFromLine
+  Sparkles, Wallet, CheckCircle2, X, ChevronRight, Activity, ShieldCheck, Trash2
 } from 'lucide-react';
 import { api } from '../services/api';
 import { AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts';
@@ -23,11 +23,12 @@ export default function PlanejamentoPatrimonial() {
   const [goals, setGoals] = useState<Goal[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
+  const [goalHistory, setGoalHistory] = useState<any[]>([]); // NOVO: Estado do Histórico
   
   // Controle de Modais
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
   const [aporteValue, setAporteValue] = useState('');
-  const [transactionType, setTransactionType] = useState<'in' | 'out'>('in'); // NOVO: Controle de Entrada/Saída
+  const [transactionType, setTransactionType] = useState<'in' | 'out'>('in'); 
   const [isAporteOpen, setIsAporteOpen] = useState(false);
   const [isPlanOpen, setIsPlanOpen] = useState(false);
   
@@ -114,6 +115,19 @@ export default function PlanejamentoPatrimonial() {
     setAporteValue('');
     setTransactionType(type);
     setIsAporteOpen(true);
+  };
+
+  // NOVO: Função que abre o modal "Ver Plano" e puxa o histórico
+  const handleOpenPlan = async (goal: Goal) => {
+    setSelectedGoal(goal);
+    setIsPlanOpen(true);
+    setGoalHistory([]); // Limpa para não piscar dados antigos
+    try {
+      const res = await api.get(`/api/goals/${goal.id}/history`);
+      setGoalHistory(res.data);
+    } catch (error) {
+      console.error("Erro ao carregar histórico");
+    }
   };
 
   const handleDeleteGoal = async (id: number) => {
@@ -324,7 +338,7 @@ export default function PlanejamentoPatrimonial() {
                       <p className="text-sm text-amber-200/80 mb-4 leading-relaxed">
                         Você está <strong className="text-amber-400">{formatCurrency(goal.requiredPace - (savingsCapacity/goals.length))}</strong> abaixo do ritmo necessário por mês.
                       </p>
-                      <button onClick={() => { setSelectedGoal(goal); setIsPlanOpen(true); }} className="text-xs font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 transition-colors">
+                      <button onClick={() => handleOpenPlan(goal)} className="text-xs font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 transition-colors">
                         Ajustar Plano <ChevronRight size={14}/>
                       </button>
                     </div>
@@ -381,12 +395,12 @@ export default function PlanejamentoPatrimonial() {
                       </div>
                     </div>
 
-                    {/* BOTÕES DE AÇÃO RESTAURADOS */}
+                    {/* BOTÕES DE AÇÃO RESTAURADOS E CORRIGIDOS */}
                     <div className="flex gap-3 pt-4 border-t border-slate-700/50 mt-auto">
                       <button onClick={() => handleOpenAporte(goal, 'in')} className="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2.5 rounded-xl font-bold transition-colors text-sm shadow-lg shadow-purple-500/20">
                         Aportar
                       </button>
-                      <button onClick={() => { setSelectedGoal(goal); setIsPlanOpen(true); }} className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2.5 rounded-xl font-bold transition-colors text-sm">
+                      <button onClick={() => handleOpenPlan(goal)} className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2.5 rounded-xl font-bold transition-colors text-sm">
                         Ver Plano →
                       </button>
                     </div>
@@ -464,7 +478,7 @@ export default function PlanejamentoPatrimonial() {
         </div>
       )}
 
-      {/* MODAL: VER PLANO (Detalhes e Exclusão) */}
+      {/* MODAL: VER PLANO (Detalhes, Histórico e Exclusão) */}
       {isPlanOpen && selectedGoal && (
         <div onClick={closeAllModals} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
           <div onClick={(e) => e.stopPropagation()} className="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-sm p-6 shadow-2xl relative">
@@ -478,6 +492,30 @@ export default function PlanejamentoPatrimonial() {
                 <p className="text-sm font-medium text-slate-200">
                   Para atingir {formatCurrency(Number(selectedGoal.target_amount))} até {new Date(selectedGoal.deadline).toLocaleDateString('pt-BR')}, você precisa aportar em média <strong className="text-emerald-400">{formatCurrency((selectedGoal as any).requiredPace)}/mês</strong>.
                 </p>
+              </div>
+
+              {/* CAIXA DE HISTÓRICO */}
+              <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 max-h-48 overflow-y-auto custom-scrollbar">
+                 <p className="text-xs text-slate-400 uppercase font-bold mb-3 flex items-center justify-between">
+                   Histórico de Movimentações
+                   <span className="text-slate-500 bg-slate-900 px-2 py-0.5 rounded-full">{goalHistory.length}</span>
+                 </p>
+                 {goalHistory.length === 0 ? (
+                   <p className="text-sm text-slate-500 italic text-center py-4">Nenhum aporte registrado.</p>
+                 ) : (
+                   <div className="space-y-3">
+                     {goalHistory.map(h => (
+                       <div key={h.id} className="flex justify-between items-center border-b border-slate-700/50 pb-2 last:border-0 last:pb-0">
+                         <span className="text-xs text-slate-400">
+                           {new Date(h.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                         </span>
+                         <span className={`text-sm font-bold ${Number(h.amount) >= 0 ? 'text-emerald-400' : 'text-slate-300'}`}>
+                           {Number(h.amount) >= 0 ? '+' : ''}{formatCurrency(Number(h.amount))}
+                         </span>
+                       </div>
+                     ))}
+                   </div>
+                 )}
               </div>
             </div>
 
