@@ -381,16 +381,13 @@ export default function PlanejamentoPatrimonial() {
                       </div>
                     </div>
 
-                    {/* BOTÕES DE AÇÃO REDESENHADOS */}
-                    <div className="flex gap-2 pt-4 border-t border-slate-700/50 mt-auto">
-                      <button onClick={() => handleOpenAporte(goal, 'in')} className="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2 rounded-lg font-bold transition-colors text-xs shadow-lg shadow-purple-500/20 flex items-center justify-center gap-1">
-                        <ArrowDownToLine size={14} /> Aportar
+                    {/* BOTÕES DE AÇÃO RESTAURADOS */}
+                    <div className="flex gap-3 pt-4 border-t border-slate-700/50 mt-auto">
+                      <button onClick={() => handleOpenAporte(goal, 'in')} className="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2.5 rounded-xl font-bold transition-colors text-sm shadow-lg shadow-purple-500/20">
+                        Aportar
                       </button>
-                      <button onClick={() => handleOpenAporte(goal, 'out')} className="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white py-2 rounded-lg font-bold transition-colors text-xs flex items-center justify-center gap-1 border border-slate-600 hover:border-slate-500">
-                        <ArrowUpFromLine size={14} /> Retirar
-                      </button>
-                      <button onClick={() => { setSelectedGoal(goal); setIsPlanOpen(true); }} className="px-3 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors border border-slate-700 flex items-center justify-center" title="Detalhes e Configurações">
-                        <TrendingUp size={16}/>
+                      <button onClick={() => { setSelectedGoal(goal); setIsPlanOpen(true); }} className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2.5 rounded-xl font-bold transition-colors text-sm">
+                        Ver Plano →
                       </button>
                     </div>
 
