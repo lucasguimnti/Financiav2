@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   Target, Plus, TrendingUp, AlertTriangle, 
-  Sparkles, Wallet, CheckCircle2, X, ChevronRight, Activity, Flame, ShieldCheck, Trash2
+  Sparkles, Wallet, CheckCircle2, X, ChevronRight, Activity, Flame, ShieldCheck, Trash2, ArrowDownToLine, ArrowUpFromLine
 } from 'lucide-react';
 import { api } from '../services/api';
 import { AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts';
@@ -27,6 +27,7 @@ export default function PlanejamentoPatrimonial() {
   // Controle de Modais
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
   const [aporteValue, setAporteValue] = useState('');
+  const [transactionType, setTransactionType] = useState<'in' | 'out'>('in'); // NOVO: Controle de Entrada/Saída
   const [isAporteOpen, setIsAporteOpen] = useState(false);
   const [isPlanOpen, setIsPlanOpen] = useState(false);
   
@@ -75,10 +76,22 @@ export default function PlanejamentoPatrimonial() {
   const handleConfirmAporte = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedGoal || !aporteValue) return;
+    
+    const value = Number(aporteValue);
+    
+    // Trava de segurança para retiradas
+    if (transactionType === 'out' && value > Number(selectedGoal.current_amount)) {
+      alert('Saldo insuficiente na meta para fazer essa retirada.');
+      return;
+    }
+
+    // Se for retirada, envia o valor negativo para o backend subtrair
+    const finalAmount = transactionType === 'in' ? value : -Math.abs(value);
+
     try {
-      await api.put(`/api/goals/${selectedGoal.id}/add`, { amount: Number(aporteValue) });
+      await api.put(`/api/goals/${selectedGoal.id}/add`, { amount: finalAmount });
       setIsAporteOpen(false); fetchData(); 
-    } catch (error) { alert('Erro ao registrar o aporte.'); }
+    } catch (error) { alert('Erro ao movimentar o saldo da meta.'); }
   };
 
   const handleCreateGoal = async (e: React.FormEvent) => {
@@ -96,11 +109,12 @@ export default function PlanejamentoPatrimonial() {
     } catch (error) { alert('Erro ao criar objetivo.'); }
   };
 
-  const handleOpenAporte = (goal: Goal) => {
-  setSelectedGoal(goal);
-  setAporteValue('');
-  setIsAporteOpen(true);
-};
+  const handleOpenAporte = (goal: Goal, type: 'in' | 'out') => {
+    setSelectedGoal(goal);
+    setAporteValue('');
+    setTransactionType(type);
+    setIsAporteOpen(true);
+  };
 
   const handleDeleteGoal = async (id: number) => {
     if(!confirm("Tem certeza que deseja excluir este objetivo? O saldo será ignorado.")) return;
@@ -165,9 +179,9 @@ export default function PlanejamentoPatrimonial() {
   const goalsOnTrack = enrichedGoals.filter(g => g.status === 'No ritmo certo' || g.status === 'Objetivo Alcançado');
 
   // Projeção Patrimonial
-  const yearsToRetirement = 24; // Exemplo fixo até os 60 (horizonte padrão)
+  const yearsToRetirement = 24; 
   const generateProjection = (years: number, addSimulation = false) => {
-    const rate = 0.008; // ~0.8% a.m
+    const rate = 0.008; 
     const months = years * 12;
     const baseInvest = savingsCapacity > 0 ? savingsCapacity : totalRequiredPace; 
     const monthlyInvest = addSimulation ? baseInvest + simulationExtra : baseInvest;
@@ -367,12 +381,16 @@ export default function PlanejamentoPatrimonial() {
                       </div>
                     </div>
 
-                    <div className="flex gap-3 pt-4 border-t border-slate-700/50 mt-auto">
-                      <button onClick={() => handleOpenAporte(goal)} className="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2.5 rounded-xl font-bold transition-colors text-sm shadow-lg shadow-purple-500/20">
-                        Aportar
+                    {/* BOTÕES DE AÇÃO REDESENHADOS */}
+                    <div className="flex gap-2 pt-4 border-t border-slate-700/50 mt-auto">
+                      <button onClick={() => handleOpenAporte(goal, 'in')} className="flex-1 bg-purple-600 hover:bg-purple-500 text-white py-2 rounded-lg font-bold transition-colors text-xs shadow-lg shadow-purple-500/20 flex items-center justify-center gap-1">
+                        <ArrowDownToLine size={14} /> Aportar
                       </button>
-                      <button onClick={() => { setSelectedGoal(goal); setIsPlanOpen(true); }} className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2.5 rounded-xl font-bold transition-colors text-sm">
-                        Ver Plano →
+                      <button onClick={() => handleOpenAporte(goal, 'out')} className="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white py-2 rounded-lg font-bold transition-colors text-xs flex items-center justify-center gap-1 border border-slate-600 hover:border-slate-500">
+                        <ArrowUpFromLine size={14} /> Retirar
+                      </button>
+                      <button onClick={() => { setSelectedGoal(goal); setIsPlanOpen(true); }} className="px-3 bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors border border-slate-700 flex items-center justify-center" title="Detalhes e Configurações">
+                        <TrendingUp size={16}/>
                       </button>
                     </div>
 
@@ -476,17 +494,41 @@ export default function PlanejamentoPatrimonial() {
         </div>
       )}
 
-      {/* MODAL: APORTE */}
+      {/* MODAL: APORTE / RETIRADA */}
       {isAporteOpen && selectedGoal && (
         <div onClick={closeAllModals} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
           <div onClick={(e) => e.stopPropagation()} className="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-sm p-6 shadow-2xl relative">
             <button onClick={() => setIsAporteOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white"><X size={20}/></button>
-            <h3 className="text-xl font-black text-white mb-2">Aportar no Objetivo</h3>
-            <p className="text-sm text-slate-400 mb-6">Injetar fundos para <strong className="text-purple-400">{selectedGoal.name}</strong>.</p>
+            
+            <h3 className="text-xl font-black text-white mb-2">
+              {transactionType === 'in' ? 'Aportar na Meta' : 'Retirar da Meta'}
+            </h3>
+            <p className="text-sm text-slate-400 mb-6">
+              Movimentando saldo para <strong className="text-purple-400">{selectedGoal.name}</strong>.
+            </p>
 
             <form onSubmit={handleConfirmAporte} className="space-y-4">
+              
+              {/* TABS DE ENTRADA E SAÍDA */}
+              <div className="flex p-1 bg-slate-800 rounded-xl mb-4 border border-slate-700/50">
+                <button 
+                  type="button" 
+                  onClick={() => setTransactionType('in')} 
+                  className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${transactionType === 'in' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                >
+                  Depositar
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => setTransactionType('out')} 
+                  className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${transactionType === 'out' ? 'bg-slate-700 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                >
+                  Resgatar
+                </button>
+              </div>
+
               <div>
-                <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Valor do Aporte (R$)</label>
+                <label className="text-xs font-bold text-slate-400 uppercase mb-1 block">Valor (R$)</label>
                 <input 
                   type="number" step="0.01" required autoFocus placeholder="0,00"
                   value={aporteValue} onChange={e => setAporteValue(e.target.value)} 
@@ -494,16 +536,27 @@ export default function PlanejamentoPatrimonial() {
                 />
               </div>
 
-              <div className="bg-emerald-900/20 border border-emerald-500/20 p-3 rounded-xl flex items-start gap-2">
-                <ShieldCheck size={18} className="text-emerald-400 shrink-0 mt-0.5"/>
-                <p className="text-xs text-emerald-300 font-medium">
-                  Aportes consistentes são o segredo. O ritmo ideal indicado para esta meta é <strong>{formatCurrency((selectedGoal as any).requiredPace)}/mês</strong>.
-                </p>
-              </div>
+              {transactionType === 'in' ? (
+                <div className="bg-emerald-900/20 border border-emerald-500/20 p-3 rounded-xl flex items-start gap-2">
+                  <ShieldCheck size={18} className="text-emerald-400 shrink-0 mt-0.5"/>
+                  <p className="text-xs text-emerald-300 font-medium">
+                    Aportes consistentes são o segredo. O ritmo ideal indicado para esta meta é <strong>{formatCurrency((selectedGoal as any).requiredPace)}/mês</strong>.
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-amber-900/20 border border-amber-500/20 p-3 rounded-xl flex items-start gap-2">
+                  <AlertTriangle size={18} className="text-amber-400 shrink-0 mt-0.5"/>
+                  <p className="text-xs text-amber-300 font-medium">
+                    Você tem <strong>{formatCurrency(Number(selectedGoal.current_amount))}</strong> disponíveis nesta meta.
+                  </p>
+                </div>
+              )}
 
               <div className="pt-2 flex gap-3">
                 <button type="button" onClick={() => setIsAporteOpen(false)} className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-bold">Cancelar</button>
-                <button type="submit" className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-extrabold shadow-lg shadow-emerald-600/20">Confirmar</button>
+                <button type="submit" className={`flex-1 py-3 text-white rounded-xl font-extrabold shadow-lg ${transactionType === 'in' ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/20' : 'bg-slate-700 hover:bg-slate-600 shadow-slate-900/20'}`}>
+                  Confirmar
+                </button>
               </div>
             </form>
           </div>
