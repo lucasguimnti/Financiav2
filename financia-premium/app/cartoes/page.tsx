@@ -6,7 +6,7 @@ import {
   CreditCard as CreditCardIcon, ChevronLeft, ChevronRight, 
   Calendar, CheckCircle2, Trash2, Wallet, 
   ArrowLeft, ShieldAlert, BarChart3, Users, DollarSign, X,
-  Search, Download, Plus, Wifi, Layers, ArrowUpRight
+  Search, Download, Plus, Wifi, Layers, ArrowUpRight, Edit2
 } from 'lucide-react';
 import { api } from '../services/api';
 import { BarChart, Bar, ResponsiveContainer, Cell, Tooltip as RechartsTooltip } from 'recharts';
@@ -28,7 +28,7 @@ interface Transaction {
   third_party_color?: string;
   installment_number?: number; 
   installments?: number;
-  payment_type?: string;   // <-- ADICIONE ESTA LINHA
+  payment_type?: string;   // <-- ADICIONADO
 }
 interface CreditCard { id: number; name: string; limit_amount: string | number; closing_day: number; due_day: number; color: string; }
 interface Account { id: number; name: string; balance: string | number; }
@@ -184,10 +184,13 @@ export default function CreditCardsCenter() {
   const [isPayModalOpen, setIsPayModalOpen] = useState(false);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [isCardModalOpen, setIsCardModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Estado para cadastro do novo cartão
   const [cardForm, setCardForm] = useState({ name: '', limit_amount: '', closing_day: 1, due_day: 10, color: '#8b5cf6' });
+  // Estado para edição do cartão
+  const [editCardForm, setEditCardForm] = useState({ id: 0, name: '', limit_amount: '', closing_day: 1, due_day: 10, color: '#8b5cf6' });
 
   useEffect(() => { fetchInitialData(); }, []);
 
@@ -199,7 +202,11 @@ export default function CreditCardsCenter() {
       ]);
       setCards(cardsRes.data); setAccounts(accRes.data); setCategories(catRes.data);
       setThirdParties(tpRes.data); setAllTransactions(transRes.data);
-      if (cardsRes.data.length > 0 && !selectedCardId) setSelectedCardId(cardsRes.data[0].id);
+      
+      // Mantém o cartão selecionado ou seleciona o primeiro
+      if (cardsRes.data.length > 0 && !selectedCardId) {
+        setSelectedCardId(cardsRes.data[0].id);
+      }
     } catch (error) { console.error(error); }
   };
 
@@ -249,6 +256,37 @@ export default function CreditCardsCenter() {
     }
   };
 
+  const handleEditCard = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await api.put(`/api/credit-cards/${editCardForm.id}`, editCardForm);
+      setIsEditModalOpen(false);
+      fetchInitialData();
+    } catch (error) {
+      alert('Erro ao editar cartão');
+    }
+  };
+
+  const handleDeleteCard = async (id: number) => {
+    if (window.confirm('Tem certeza que deseja excluir este cartão? Isso impedirá o gerenciamento dele.')) {
+      try {
+        await api.delete(`/api/credit-cards/${id}`);
+        // Se o cartão excluído era o que estava selecionado, muda para outro (se houver)
+        if (selectedCardId === id) {
+          const remainingCards = cards.filter(c => c.id !== id);
+          setSelectedCardId(remainingCards.length > 0 ? remainingCards[0].id : null);
+        }
+        fetchInitialData();
+      } catch (error: any) {
+        if (error.response?.status === 400) {
+          alert('Este cartão possui compras vinculadas e não pode ser excluído.');
+        } else {
+          alert('Erro ao excluir cartão.');
+        }
+      }
+    }
+  };
+
   const handleDeleteTransaction = async (id: number) => {
     if (window.confirm('Tem certeza que deseja excluir esta compra? A fatura será recalculada.')) {
       try {
@@ -276,7 +314,7 @@ export default function CreditCardsCenter() {
   const globalUsedLimit = allTransactions.filter(t => t.payment_type === 'credit_card' && !t.is_paid).reduce((acc, t) => acc + Math.abs(parseFloat(String(t.amount))), 0);
   const globalAvailable = Math.max(0, globalTotalLimit - globalUsedLimit);
 
-  // Cálculos do Cartão Atual (Garantindo tipagem com String)
+  // Cálculos do Cartão Atual
   const selectedCard = cards.find(c => String(c.id) === String(selectedCardId));
   const totalLimit = selectedCard ? parseFloat(String(selectedCard.limit_amount)) : 0;
   const usedLimit = allTransactions.filter(t => String(t.credit_card_id) === String(selectedCardId) && !t.is_paid).reduce((acc, t) => acc + Math.abs(parseFloat(String(t.amount))), 0);
@@ -306,6 +344,18 @@ export default function CreditCardsCenter() {
   });
 
   const filteredInvoiceTransactions = invoice.transactions.filter(t => t.description.toLowerCase().includes(searchQuery.toLowerCase()) || t.third_party_name?.toLowerCase().includes(searchQuery.toLowerCase()));
+
+  const openEditModal = (card: CreditCard) => {
+    setEditCardForm({
+      id: card.id,
+      name: card.name,
+      limit_amount: String(card.limit_amount),
+      closing_day: card.closing_day,
+      due_day: card.due_day,
+      color: card.color
+    });
+    setIsEditModalOpen(true);
+  };
 
   return (
     <div className="min-h-screen bg-[#0f172a] p-4 md:p-6 lg:p-8 text-white font-sans selection:bg-purple-500/30">
@@ -373,29 +423,54 @@ export default function CreditCardsCenter() {
                 ))}
               </div>
               
-              {/* CARTÃO FÍSICO (UI Premium Apple Card style) */}
-              <div className="relative h-56 rounded-3xl p-6 flex flex-col justify-between shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden group border border-white/10 transform transition-transform hover:scale-[1.02] duration-300" style={{ background: `linear-gradient(135deg, ${selectedCard.color} 0%, #0f172a 120%)` }}>
-                <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-                <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/5 rounded-full blur-2xl"></div>
-                
-                <div className="flex justify-between items-start relative z-10">
-                  <div>
-                    <h2 className="text-xl font-black tracking-widest text-white drop-shadow-md">{selectedCard.name.toUpperCase()}</h2>
-                    <p className="text-white/50 text-xs tracking-widest mt-1 font-mono">**** **** **** 8921</p>
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <CreditCardIcon className="text-white/80" size={28} />
-                    <Wifi className="text-white/60 rotate-90" size={20} />
+              {/* CARTÃO FÍSICO (UI Premium Apple Card style) & CONTROLES */}
+              <div>
+                {/* Botões de Ação do Cartão Atual */}
+                <div className="flex justify-between items-center mb-3 px-2">
+                  <h3 className="text-slate-400 text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                    Opções do Cartão
+                  </h3>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => openEditModal(selectedCard)} 
+                      className="p-1.5 text-slate-400 hover:text-purple-400 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition-colors" 
+                      title="Editar Cartão"
+                    >
+                      <Edit2 size={16} />
+                    </button>
+                    <button 
+                      onClick={() => handleDeleteCard(selectedCard.id)} 
+                      className="p-1.5 text-slate-400 hover:text-red-400 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition-colors" 
+                      title="Excluir Cartão"
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </div>
                 </div>
-                
-                <div className="relative z-10 flex justify-between items-end">
-                  <div className="w-12 h-9 rounded bg-gradient-to-br from-amber-200/80 to-amber-500/80 border border-amber-100/30 flex items-center justify-center opacity-80">
-                    <div className="w-8 h-5 border border-amber-900/20 rounded-sm"></div>
+
+                <div className="relative h-56 rounded-3xl p-6 flex flex-col justify-between shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden group border border-white/10 transform transition-transform hover:scale-[1.02] duration-300" style={{ background: `linear-gradient(135deg, ${selectedCard.color} 0%, #0f172a 120%)` }}>
+                  <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+                  <div className="absolute -right-10 -top-10 w-40 h-40 bg-white/5 rounded-full blur-2xl"></div>
+                  
+                  <div className="flex justify-between items-start relative z-10">
+                    <div>
+                      <h2 className="text-xl font-black tracking-widest text-white drop-shadow-md">{selectedCard.name.toUpperCase()}</h2>
+                      <p className="text-white/50 text-xs tracking-widest mt-1 font-mono">**** **** **** 8921</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-2">
+                      <CreditCardIcon className="text-white/80" size={28} />
+                      <Wifi className="text-white/60 rotate-90" size={20} />
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-white/60 text-[10px] tracking-widest uppercase font-bold mb-0.5">Fechamento: Dia {selectedCard.closing_day}</p>
-                    <p className="text-white/60 text-[10px] tracking-widest uppercase font-bold">Vencimento: Dia {selectedCard.due_day}</p>
+                  
+                  <div className="relative z-10 flex justify-between items-end">
+                    <div className="w-12 h-9 rounded bg-gradient-to-br from-amber-200/80 to-amber-500/80 border border-amber-100/30 flex items-center justify-center opacity-80">
+                      <div className="w-8 h-5 border border-amber-900/20 rounded-sm"></div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-white/60 text-[10px] tracking-widest uppercase font-bold mb-0.5">Fechamento: Dia {selectedCard.closing_day}</p>
+                      <p className="text-white/60 text-[10px] tracking-widest uppercase font-bold">Vencimento: Dia {selectedCard.due_day}</p>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -632,6 +707,58 @@ export default function CreditCardsCenter() {
               
               <button type="submit" className="w-full py-4 mt-4 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-colors shadow-lg shadow-purple-500/20 cursor-pointer">
                 Salvar Cartão
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE EDITAR CARTÃO */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-800 border border-slate-700 rounded-2xl w-full max-w-md p-6 relative shadow-2xl">
+            <button onClick={() => setIsEditModalOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors cursor-pointer"><X size={20} /></button>
+            <h3 className="text-xl font-bold text-white mb-6 flex items-center gap-2"><Edit2 className="text-purple-400"/> Editar Cartão</h3>
+            
+            <form onSubmit={handleEditCard} className="space-y-4">
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block uppercase font-bold tracking-wide">Nome do Cartão</label>
+                <input type="text" placeholder="Ex: Nubank, Inter..." required value={editCardForm.name} onChange={e => setEditCardForm({...editCardForm, name: e.target.value})} className="w-full p-3 bg-slate-900 border border-slate-700 rounded-xl text-white focus:border-purple-500 focus:outline-none transition-all" />
+              </div>
+              
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block uppercase font-bold tracking-wide">Limite Total (R$)</label>
+                <input type="number" step="0.01" placeholder="0,00" required value={editCardForm.limit_amount} onChange={e => setEditCardForm({...editCardForm, limit_amount: e.target.value})} className="w-full p-3 bg-slate-900 border border-slate-700 rounded-xl text-white focus:border-purple-500 focus:outline-none transition-all" />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs text-slate-400 mb-1 block uppercase font-bold tracking-wide">Dia do Fechamento</label>
+                  <input type="number" required min="1" max="31" value={editCardForm.closing_day} onChange={e => setEditCardForm({...editCardForm, closing_day: Number(e.target.value)})} className="w-full p-3 bg-slate-900 border border-slate-700 rounded-xl text-white focus:border-purple-500 focus:outline-none transition-all" />
+                </div>
+                <div>
+                  <label className="text-xs text-slate-400 mb-1 block uppercase font-bold tracking-wide">Dia do Vencimento</label>
+                  <input type="number" required min="1" max="31" value={editCardForm.due_day} onChange={e => setEditCardForm({...editCardForm, due_day: Number(e.target.value)})} className="w-full p-3 bg-slate-900 border border-slate-700 rounded-xl text-white focus:border-purple-500 focus:outline-none transition-all" />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs text-slate-400 mb-1 block uppercase font-bold tracking-wide">Cor do Cartão</label>
+                <div className="flex gap-2">
+                  {['#8b5cf6', '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#ec4899', '#64748b', '#0f172a'].map(color => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => setEditCardForm({...editCardForm, color})}
+                      className={`w-8 h-8 rounded-full border-2 transition-all ${editCardForm.color === color ? 'border-white scale-110 shadow-lg' : 'border-transparent opacity-60 hover:opacity-100 cursor-pointer'}`}
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                </div>
+              </div>
+              
+              <button type="submit" className="w-full py-4 mt-4 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl transition-colors shadow-lg shadow-purple-500/20 cursor-pointer">
+                Salvar Alterações
               </button>
             </form>
           </div>
